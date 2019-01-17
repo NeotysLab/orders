@@ -12,6 +12,17 @@ pipeline {
   environment {
     APP_NAME = "orders"
     ARTEFACT_ID = "sockshop-" + "${env.APP_NAME}"
+    NL_DT_TAG="app:${env.APP_NAME},environment:dev"
+    CARTS_ANOMALIEFILE="$WORKSPACE/monspec/orders_anomalieDection.json"
+    TAG_STAGING = "${env.TAG}:${env.VERSION}"
+    DYNATRACEID="${env.DT_ACCOUNTID}"
+    DYNATRACEAPIKEY="${env.DT_API_TOKEN}"
+    NLAPIKEY="${env.NL_WEB_API_KEY}"
+    OUTPUTSANITYCHECK="$WORKSPACE/infrastructure/sanitycheck.json"
+    DYNATRACEPLUGINPATH="$WORKSPACE/lib/DynatraceIntegration-3.0.1-SNAPSHOT.jar"
+    GITORIGIN="neotyslab"
+    BASICCHECKURI="/health"
+    ORDERSURI="/orders"
   }
   stages {
     stage('Maven build') {
@@ -30,7 +41,9 @@ pipeline {
           _TAG_STAGING = "${_TAG}:${_VERSION}"
         }
         container('maven') {
-          sh 'mvn -B clean package'
+          sh "mvn -B clean package -DdynatraceId=$DYNATRACEID -DneoLoadWebAPIKey=$NLAPIKEY -DdynatraceApiKey=$DYNATRACEAPIKEY -Dtags=${NL_DT_TAG} -DoutPutReferenceFile=$OUTPUTSANITYCHECK -DcustomActionPath=$DYNATRACEPLUGINPATH -DjsonAnomalieDetectionFile=$QUEUEMASTER_ANOMALIEFILE"
+          sh "chmod -R 777 $WORKSPACE/target/neoload/"
+
         }
       }
     }
@@ -88,7 +101,17 @@ pipeline {
           }
         }
     }
-    
+   stage('Start NeoLoad infrastructure') {
+
+        steps {
+                container('kubectl') {
+                    script {
+                     sh "kubectl create -f $WORKSPACE/infrastructure/infrastructure/neoload/lg/docker-compose.yml"
+                    }
+                }
+        }
+
+    }
     stage('Run health check in dev') {
       when {
         expression {
@@ -99,27 +122,49 @@ pipeline {
         echo "Waiting for the service to start..."
         sleep 350
 
-        container('jmeter') {
-          script {
-            def status = executeJMeter ( 
-              scriptName: "jmeter/basiccheck.jmx",
-              resultsDir: "HealthCheck_${BUILD_NUMBER}",
-              serverUrl: "${env.APP_NAME}.dev", 
-              serverPort: 80,
-              checkPath: '/health',
-              vuCount: 1,
-              loopCount: 1,
-              LTN: "HealthCheck_${BUILD_NUMBER}",
-              funcValidation: true,
-              avgRtValidation: 0
-            )
+        container('neoload') {
+         script {
+
+            sh "mkdir -p /home/jenkins/.neotys/neoload"
+            sh "cp $WORKSPACE/infrastructure/infrastructure/neoload/license.lic /home/jenkins/.neotys/neoload/"
+            status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName HealthCheck_orders_${BUILD_NUMBER} -description HealthCheck_orders_${BUILD_NUMBER} -nlweb -L Population_BasicCheckTesting=$WORKSPACE/infrastructure/infrastructure/neoload/lg/remote.txt -L Population_Dynatrace_Integration=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables host=${env.APP_NAME}.dev.svc,port=80,basicPath=${BASICCHECKURI}h -launch DynatraceSanityCheck -noGUI", returnStatus: true)
+
             if (status != 0) {
-              currentBuild.result = 'FAILED'
-              error "Health check in dev failed."
+                      currentBuild.result = 'FAILED'
+                      error "Health check in dev failed."
             }
           }
+
+
         }
       }
+    }
+     stage('Sanity Check') {
+          steps {
+            container('neoload') {
+              script {
+                     status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName DynatraceSanityCheck_orders_${BUILD_NUMBER} -description DynatraceSanityCheck_orders_${BUILD_NUMBER} -nlweb -L  Population_Dynatrace_SanityCheck=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables host=${env.APP_NAME}.dev,port=80 -launch DYNATRACE_SANITYCHECK  -noGUI", returnStatus: true)
+
+                     if (status != 0) {
+                          currentBuild.result = 'FAILED'
+                          error "Health check in dev failed."
+                     }
+               }
+             }
+             container('git') {
+               echo "push ${OUTPUTSANITYCHECK}"
+               //---add the push of the sanity check---
+               withCredentials([usernamePassword(credentialsId: 'git-credentials-acm', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                   sh "git config --global user.email ${env.GITHUB_USER_EMAIL}"
+                   sh "git stash"
+                   sh "git pull https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${env.GITHUB_ORGANIZATION}/orders origin master -r"
+                   sh "git add ${OUTPUTSANITYCHECK}"
+                   sh "git commit -m 'Update Sanity_Check_${BUILD_NUMBER} ${env.APP_NAME} version ${env.VERSION}'"
+                   sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${env.GITHUB_ORGANIZATION}/orders ${GITORIGIN} master"
+               }
+             }
+
+          }
     }
     stage('Run functional check in dev') {
       when {
@@ -128,25 +173,16 @@ pipeline {
         }
       }
       steps {
-        container('jmeter') {
+        container('neoload') {
           script {
-            def status = executeJMeter (  
-              scriptName: "jmeter/${env.APP_NAME}_load.jmx",
-              resultsDir: "FuncCheck_${BUILD_NUMBER}",
-              serverUrl: "${env.APP_NAME}.dev", 
-              serverPort: 80,
-              checkPath: '/health',
-              vuCount: 1,
-              loopCount: 1,
-              LTN: "FuncCheck_${BUILD_NUMBER}",
-              funcValidation: true,
-              avgRtValidation: 0
-            )
-            if (status != 0) {
-              currentBuild.result = 'FAILED'
-              error "Functional check in dev failed."
-            }
-          }
+
+             status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName FuncCheck_orders__${BUILD_NUMBER} -description FuncCheck_orders__${BUILD_NUMBER} -nlweb -L  Population_Orders=$WORKSPACE/infrastructure/infrastructure/neoload/lg/remote.txt -L Population_Dynatrace_Integration=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables host=${env.APP_NAME}.dev,port=80,orderPath=${ORDERSURI} -launch Order_Load -noGUI", returnStatus: true)
+              if (status != 0) {
+                currentBuild.result = 'FAILED'
+                error "Load Test on cart."
+              }
+           }
+
         }
       }
     }
@@ -180,5 +216,17 @@ pipeline {
           ]
       }
     }
+  }
+  post {
+            always {
+              container('kubectl') {
+                     script {
+                      echo "delete neoload infrastructure"
+                      sh "kubectl delete svc nl-lg-orders -n cicd"
+                      sh "kubectl delete pod nl-lg-orders -n cicd --grace-period=0 --force"
+                     }
+              }
+            }
+
   }
 }
