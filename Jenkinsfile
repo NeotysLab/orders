@@ -157,10 +157,10 @@ pipeline {
                withCredentials([usernamePassword(credentialsId: 'git-credentials-acm', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                    sh "git config --global user.email ${env.GITHUB_USER_EMAIL}"
                    sh "git stash"
-                   sh "git pull https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${env.GITHUB_ORGANIZATION}/orders origin master -r"
+                  // sh "git pull https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${env.GITHUB_ORGANIZATION}/orders origin master -r"
                    sh "git add ${OUTPUTSANITYCHECK}"
                    sh "git commit -m 'Update Sanity_Check_${BUILD_NUMBER} ${env.APP_NAME} version ${env.VERSION}'"
-                   sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${env.GITHUB_ORGANIZATION}/orders ${GITORIGIN} master"
+                  // sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${env.GITHUB_ORGANIZATION}/orders ${GITORIGIN} master"
                }
              }
 
@@ -176,7 +176,7 @@ pipeline {
         container('neoload') {
           script {
 
-             status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName FuncCheck_orders__${BUILD_NUMBER} -description FuncCheck_orders__${BUILD_NUMBER} -nlweb -L  Population_Orders=$WORKSPACE/infrastructure/infrastructure/neoload/lg/remote.txt -L Population_Dynatrace_Integration=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables host=${env.APP_NAME}.dev,port=80,orderPath=${ORDERSURI} -launch Order_Load -noGUI", returnStatus: true)
+             status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName FuncCheck_orders__${BUILD_NUMBER} -description FuncCheck_orders__${BUILD_NUMBER} -nlweb -L  Population_Orders=$WORKSPACE/infrastructure/infrastructure/neoload/lg/remote.txt -L Population_Dynatrace_Integration=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables host=${env.APP_NAME}.dev.svc,port=80,orderPath=${ORDERSURI} -launch Order_Load -noGUI", returnStatus: true)
               if (status != 0) {
                 currentBuild.result = 'FAILED'
                 error "Load Test on cart."
