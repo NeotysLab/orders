@@ -176,7 +176,7 @@ pipeline {
         container('neoload') {
           script {
 
-             status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName FuncCheck_orders__${BUILD_NUMBER} -description FuncCheck_orders__${BUILD_NUMBER} -nlweb -L  Population_Orders=$WORKSPACE/infrastructure/infrastructure/neoload/lg/remote.txt -L Population_Dynatrace_Integration=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables host=${env.APP_NAME}.dev.svc,port=80,orderPath=${ORDERSURI} -launch Order_Load -noGUI", returnStatus: true)
+             status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName FuncCheck_orders__${BUILD_NUMBER} -description FuncCheck_orders__${BUILD_NUMBER} -nlweb -L  Population_Orders=$WORKSPACE/infrastructure/infrastructure/neoload/lg/remote.txt -L Population_Dynatrace_Integration=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables carts_host=${env.APP_NAME}.dev.svc,carts_port=80,orderPath=${ORDERSURI} -launch Order_Load -noGUI", returnStatus: true)
               if (status != 0) {
                 currentBuild.result = 'FAILED'
                 error "Load Test on cart."
