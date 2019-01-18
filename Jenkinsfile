@@ -143,7 +143,7 @@ pipeline {
           steps {
             container('neoload') {
               script {
-                     status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName DynatraceSanityCheck_orders_${BUILD_NUMBER} -description DynatraceSanityCheck_orders_${BUILD_NUMBER} -nlweb -L  Population_Dynatrace_SanityCheck=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables host=${env.APP_NAME}.dev,port=80 -launch DYNATRACE_SANITYCHECK  -noGUI", returnStatus: true)
+                     status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName DynatraceSanityCheck_orders_${BUILD_NUMBER} -description DynatraceSanityCheck_orders_${BUILD_NUMBER} -nlweb -L  Population_Dynatrace_SanityCheck=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables carts_host=${env.APP_NAME}.dev.svc,carts_port=80 -launch DYNATRACE_SANITYCHECK  -noGUI", returnStatus: true)
 
                      if (status != 0) {
                           currentBuild.result = 'FAILED'
