@@ -9,7 +9,7 @@ pipeline {
   agent {
     label 'maven'
   }
-  environment {
+    environment {
     APP_NAME = "orders"
     ARTEFACT_ID = "sockshop-" + "${env.APP_NAME}"
     NL_DT_TAG="app:${env.APP_NAME},environment:dev"
