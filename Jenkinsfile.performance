@@ -6,6 +6,17 @@ pipeline {
   }
   environment {
     APP_NAME = "orders"
+      NL_DT_TAG="app:${env.APP_NAME},environment:dev"
+     CARTS_ANOMALIEFILE="$WORKSPACE/monspec/orders_anomalieDection.json"
+     TAG_STAGING = "${env.TAG}:${env.VERSION}"
+     DYNATRACEID="${env.DT_ACCOUNTID}"
+    DYNATRACEAPIKEY="${env.DT_API_TOKEN}"
+    NLAPIKEY="${env.NL_WEB_API_KEY}"
+    OUTPUTSANITYCHECK="$WORKSPACE/infrastructure/sanitycheck.json"
+    DYNATRACEPLUGINPATH="$WORKSPACE/lib/DynatraceIntegration-3.0.1-SNAPSHOT.jar"
+    GITORIGIN="neotyslab"
+    BASICCHECKURI="/health"
+    ORDERSURI="/orders"
   }
   stages {
    stage('Maven build'){
@@ -14,7 +25,7 @@ pipeline {
          checkout scm
          container('maven')
          {
-             sh "mvn -B clean package -DdynatraceId=$DYNATRACEID -DneoLoadWebAPIKey=$NLAPIKEY -DdynatraceApiKey=$DYNATRACEAPIKEY -Dtags=${NL_DT_TAG} -DoutPutReferenceFile=$OUTPUTSANITYCHECK -DcustomActionPath=$DYNATRACEPLUGINPATH -DjsonAnomalieDetectionFile=$QUEUEMASTER_ANOMALIEFILE"
+             sh "mvn -B clean package -DdynatraceId=$DYNATRACEID -DneoLoadWebAPIKey=$NLAPIKEY -DdynatraceApiKey=$DYNATRACEAPIKEY -Dtags=${NL_DT_TAG} -DoutPutReferenceFile=$OUTPUTSANITYCHECK -DcustomActionPath=$DYNATRACEPLUGINPATH -DjsonAnomalieDetectionFile=$CARTS_ANOMALIEFILE"
              sh "chmod -R 777 $WORKSPACE/target/neoload/"
          }
        }
