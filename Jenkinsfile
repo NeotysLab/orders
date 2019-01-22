@@ -127,7 +127,7 @@ pipeline {
 
             sh "mkdir -p /home/jenkins/.neotys/neoload"
             sh "cp $WORKSPACE/infrastructure/infrastructure/neoload/license.lic /home/jenkins/.neotys/neoload/"
-            status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName HealthCheck_orders_${BUILD_NUMBER} -description HealthCheck_orders_${BUILD_NUMBER} -nlweb -L Population_BasicCheckTesting=$WORKSPACE/infrastructure/infrastructure/neoload/lg/remote.txt -L Population_Dynatrace_Integration=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables host=${env.APP_NAME}.dev.svc,port=80,basicPath=${BASICCHECKURI}h -launch DynatraceSanityCheck -noGUI", returnStatus: true)
+            status =sh(script:"/neoload/bin/NeoLoadCmd -project $WORKSPACE/target/neoload/Orders_NeoLoad/Orders_NeoLoad.nlp -testResultName HealthCheck_orders_${BUILD_NUMBER} -description HealthCheck_orders_${BUILD_NUMBER} -nlweb -L Population_BasicCheckTesting=$WORKSPACE/infrastructure/infrastructure/neoload/lg/remote.txt -L Population_Dynatrace_Integration=$WORKSPACE/infrastructure/infrastructure/neoload/lg/local.txt -nlwebToken $NLAPIKEY -variables host=${env.APP_NAME}.dev.svc,port=80,basicPath=${BASICCHECKURI} -launch DynatraceSanityCheck -noGUI", returnStatus: true)
 
             if (status != 0) {
                       currentBuild.result = 'FAILED'
