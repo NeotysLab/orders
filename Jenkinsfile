@@ -156,7 +156,7 @@ pipeline {
                //---add the push of the sanity check---
                withCredentials([usernamePassword(credentialsId: 'git-credentials-acm', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                    sh "git config --global user.email ${env.GITHUB_USER_EMAIL}"
-                   sh "git stash"
+                   //sh "git stash"
                   // sh "git pull https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${env.GITHUB_ORGANIZATION}/orders origin master -r"
                    sh "git add ${OUTPUTSANITYCHECK}"
                    sh "git commit -m 'Update Sanity_Check_${BUILD_NUMBER} ${env.APP_NAME} version ${env.VERSION}'"
